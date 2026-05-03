@@ -9,7 +9,7 @@ import secureli.container
 import secureli.main
 from secureli.modules.shared.models.install import VerifyOutcome, VerifyResult
 from secureli.modules.shared.models.publish_results import PublishResultsOption
-from secureli.modules.shared.models.scan import ScanMode
+from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
 from secureli.modules.shared.utilities import secureli_version
 
 
@@ -147,6 +147,7 @@ def test_that_scan_implements_file_arg(mock_container: MagicMock):
         publish_results_condition=PublishResultsOption.NEVER,
         specific_test=None,
         files=["test.py"],
+        output_format=ScanOutputFormat.TEXT,
     )
 
 
@@ -164,6 +165,32 @@ def test_that_scan_implements_multiple_file_args(mock_container: MagicMock):
         publish_results_condition=PublishResultsOption.NEVER,
         specific_test=None,
         files=["test.py", "test2.py"],
+        output_format=ScanOutputFormat.TEXT,
+    )
+
+
+def test_that_scan_passes_json_output_format(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "json"])
+    assert result.exit_code == 0
+    mock_container.scan_action.return_value.scan_repo.assert_called_once_with(
+        folder_path=Path("."),
+        scan_mode=ScanMode.STAGED_ONLY,
+        always_yes=False,
+        publish_results_condition=PublishResultsOption.NEVER,
+        specific_test=None,
+        files=None,
+        output_format=ScanOutputFormat.JSON,
+    )
+
+
+def test_that_scan_format_option_is_case_insensitive(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "JSON"])
+    assert result.exit_code == 0
+    assert (
+        mock_container.scan_action.return_value.scan_repo.call_args.kwargs[
+            "output_format"
+        ]
+        == ScanOutputFormat.JSON
     )
 
 

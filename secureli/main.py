@@ -9,7 +9,7 @@ from secureli.container import Container
 from secureli.modules.shared.models.echo import Color
 from secureli.modules.shared.models.install import VerifyOutcome
 from secureli.modules.shared.models.publish_results import PublishResultsOption
-from secureli.modules.shared.models.scan import ScanMode
+from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
 from secureli.modules.shared.resources import read_resource
 from secureli.settings import Settings
 import secureli.repositories.secureli_config as SecureliConfig
@@ -148,6 +148,16 @@ def scan(
             This can be included multiple times to scan multiple files e.g '--file file1 --file file2'
         """,
     ),
+    output_format: ScanOutputFormat = Option(
+        ScanOutputFormat.TEXT,
+        "--format",
+        help=(
+            "How to write scan results to stdout: "
+            "`text` (default) echoes hook output plus a summary line on success; "
+            "`json` prints one JSON object (schema_version + ScanResult)."
+        ),
+        case_sensitive=False,
+    ),
 ):
     """
     Performs an explicit check of the repository to detect security issues without remote logging.
@@ -160,6 +170,7 @@ def scan(
         publish_results_condition=publish_results,
         specific_test=specific_test,
         files=files,
+        output_format=output_format,
     )
 
 

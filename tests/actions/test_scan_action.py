@@ -11,7 +11,15 @@ from secureli.modules.shared.models.publish_results import PublishResultsOption
 import secureli.modules.shared.models.repository as RepositoryModels
 import secureli.modules.shared.models.config as ConfigModels
 from secureli.modules.shared.models.result import Result
-from secureli.modules.shared.models.scan import ScanMode, ScanResult
+import json
+
+from secureli.modules.shared.models.scan import (
+    ScanFailure,
+    ScanMode,
+    ScanOutputFormat,
+    ScanResult,
+)
+from secureli.modules.shared.scan_output import SCAN_OUTPUT_SCHEMA_VERSION
 from secureli.repositories import repo_settings
 from unittest import mock
 from unittest.mock import MagicMock, patch
@@ -187,6 +195,96 @@ def test_that_scan_repo_errors_if_not_successful(
         scan_action.scan_repo(test_folder_path, ScanMode.STAGED_ONLY, False)
 
     assert sys_ext_info.value.code is ExitCode.SCAN_ISSUES_DETECTED.value
+
+
+@mock.patch.dict(os.environ, {"API_KEY": "", "API_ENDPOINT": ""}, clear=True)
+def test_that_scan_repo_prints_machine_json_when_output_format_json(
+    scan_action: ScanAction,
+    mock_secureli_config: MagicMock,
+    mock_language_support: MagicMock,
+    mock_hooks_scanner: MagicMock,
+    mock_custom_scanners: MagicMock,
+    mock_language_analyzer: MagicMock,
+    mock_echo: MagicMock,
+):
+    mock_language_analyzer.analyze.return_value = AnalyzeResult(
+        language_proportions={"RadLang": 1.0},
+        skipped_files=[],
+    )
+    mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
+        languages=["RadLang"],
+        version_installed="abc123",
+        last_hook_update_check=9999999999,
+    )
+    mock_language_support.version_for_language.return_value = "abc123"
+    mock_hooks_scanner.scan_repo.return_value = ScanResult(
+        successful=True, failures=[], output="hook done"
+    )
+    mock_custom_scanners.scan_repo.return_value = ScanResult(
+        successful=True, failures=[], output=None
+    )
+
+    scan_action.scan_repo(
+        test_folder_path,
+        ScanMode.STAGED_ONLY,
+        always_yes=False,
+        output_format=ScanOutputFormat.JSON,
+    )
+
+    last_stdout = mock_echo.print.call_args_list[-1][0][0]
+    payload = json.loads(last_stdout)
+    assert payload["schema_version"] == SCAN_OUTPUT_SCHEMA_VERSION
+    assert payload["successful"] is True
+    assert payload["failures"] == []
+    assert "hook done" in (payload.get("output") or "")
+
+
+@mock.patch.dict(os.environ, {"API_KEY": "", "API_ENDPOINT": ""}, clear=True)
+def test_that_scan_repo_json_output_on_failure_exits_with_scan_issues(
+    scan_action: ScanAction,
+    mock_hooks_scanner: MagicMock,
+    mock_custom_scanners: MagicMock,
+    mock_secureli_config: MagicMock,
+    mock_language_analyzer: MagicMock,
+    mock_echo: MagicMock,
+):
+    mock_language = "RadLang"
+    mock_language_analyzer.analyze.return_value = AnalyzeResult(
+        language_proportions={f"{mock_language}": 1.0},
+        skipped_files=[],
+    )
+    mock_custom_scanners.scan_repo.return_value = ScanResult(
+        successful=False, output="So much PII", failures=[]
+    )
+    mock_hooks_scanner.scan_repo.return_value = ScanResult(
+        successful=False,
+        output="Bad Error",
+        failures=[
+            ScanFailure(
+                repo="https://hooks.example/repo",
+                id="flake8",
+                file="a.py",
+                exitCode="1",
+            ),
+        ],
+    )
+    mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
+        languages=[mock_language], version_installed="abc123"
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        scan_action.scan_repo(
+            test_folder_path,
+            ScanMode.STAGED_ONLY,
+            False,
+            output_format=ScanOutputFormat.JSON,
+        )
+
+    assert exc.value.code == ExitCode.SCAN_ISSUES_DETECTED.value
+    last_stdout = mock_echo.print.call_args_list[-1][0][0]
+    payload = json.loads(last_stdout)
+    assert payload["successful"] is False
+    assert payload["failures"][0]["id"] == "flake8"
 
 
 @mock.patch.dict(os.environ, {"API_KEY": "", "API_ENDPOINT": ""}, clear=True)

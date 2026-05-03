@@ -7,7 +7,9 @@ description: Breaks work into ordered tasks. Use when you have a spec or clear r
 
 ## Overview
 
-Decompose work into small, verifiable tasks with explicit acceptance criteria. Good task breakdown is the difference between an agent that completes work reliably and one that produces a tangled mess. Every task should be small enough to implement, test, and verify in a single focused session.
+Decompose work into small, verifiable tasks with explicit acceptance criteria.
+
+**Repository example:** [plan.md](./plan.md) implements this pattern for **seCureLI modernization MVP** (see [spec-driven-development.md](./spec-driven-development.md)). Good task breakdown is the difference between an agent that completes work reliably and one that produces a tangled mess. Every task should be small enough to implement, test, and verify in a single focused session.
 
 ## When to Use
 

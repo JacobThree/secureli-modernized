@@ -198,3 +198,107 @@ Before proceeding to implementation, confirm:
 - [ ] Success criteria are specific and testable
 - [ ] Boundaries (Always/Ask First/Never) are defined
 - [ ] The spec is saved to a file in the repository
+
+---
+
+# Spec: seCureLI modernization MVP (2026)
+
+This section is the **active product spec** for this fork. Process guidance above still applies; implement work against this document and keep it updated when scope changes.
+
+## Objective
+
+Bring the CLI to a **maintainable, 2026-ready baseline** without a rewrite: current Python support, machine-readable scan output for automation and GitHub, safer `init` UX, and a quick health check command. Success = upstream parity on core flows plus these four deliverables, clean CI, and no new default telemetry or secret exfiltration.
+
+**Users:** developers running seCureLI locally and in CI; maintainers extending the Python codebase.
+
+**Non-goals (this spec):** Rust core, AI remediation, SBOM/license suites, opinionated profiles (startup/enterprise), HTML report UI, plugin registry, full policy-as-code.
+
+## Assumptions
+
+1. CLI stays **Python + Typer**; pre-commit remains the hook execution engine.
+2. **SARIF 2.1.0** output is sufficient at a minimal viable level (rule IDs, locations, messages) for upload to compatible consumers; full GitHub Code Scanning parity can iterate later.
+3. **JSON** format is stable for scripting; breaking JSON shape is a semver concern later, not blocked for MVP.
+4. Unblocking **Python 3.12+** may require changing how `dependency-injector` is pinned (e.g. released version with 3.12 support or a narrow fork/git pin) — exact resolution is implementation detail; outcome is supported 3.12 in `pyproject` and CI.
+
+## Tech stack
+
+- Python (target **3.12** minimum supported for this track; keep **3.9–3.11** working if low cost, else document lift in CHANGELOG).
+- Poetry / existing `pyproject.toml` layout.
+- Typer, Pydantic (**v2** after migration), pre-commit, pytest.
+
+## Commands (target surface)
+
+```bash
+# Existing — keep working
+poetry install
+poetry run poe test
+poetry run secureli scan
+poetry run secureli init
+
+# New / extended
+poetry run secureli scan --format text    # default; current behavior
+poetry run secureli scan --format json
+poetry run secureli scan --format sarif
+poetry run secureli init --dry-run        # no writes; print planned changes
+poetry run secureli doctor                # environment + repo readiness checks
+```
+
+CI (existing patterns): extend matrix to include Python 3.12 where applicable.
+
+## Project structure (touch points)
+
+- `secureli/main.py` — new flags / `doctor` command registration.
+- `secureli/actions/scan.py` — orchestrate formatters; exit codes unchanged (fail on findings).
+- New small module e.g. `secureli/modules/shared/scan_output/` or `formatters/` — JSON + SARIF builders (pure functions, testable).
+- `secureli/actions/initializer.py` (or equivalent) — dry-run path: compute same plan as today, skip writes, print summary.
+- New `secureli/actions/doctor.py` (or service) — read-only checks.
+- `tests/` — unit tests for formatters and doctor; extend CLI tests for new flags.
+
+## Code style
+
+- Match existing module layout, type hints, and Typer `Option` patterns.
+- Formatters take a structured in-memory result (reuse or extend `ScanResult` / failures list), not raw ANSI strings.
+- SARIF: build a dict matching SARIF 2.1.0 schema where practical; validate with a focused test (golden file or required keys).
+
+Example (illustrative):
+
+```python
+def scan_failures_to_sarif(failures: list[ScanFailure], tool_name: str) -> dict:
+    """Return SARIF Log dict; no I/O."""
+    ...
+```
+
+## Testing strategy
+
+- **pytest** for new pure functions (SARIF/JSON structure, doctor rules).
+- CLI: extend existing `tests/application/test_main.py` (or parallel) for `--format`, `--dry-run`, `doctor`.
+- Golden or snapshot tests for **one** representative SARIF and JSON payload to prevent drift.
+- Run full `poe test` before merge; no reduction in existing coverage without approval.
+
+## Boundaries
+
+- **Always:** default `scan` output remains human **text** unless `--format` is set; never print raw secrets in JSON/SARIF (messages as delivered by hooks today — do not add new secret-bearing fields).
+- **Ask first:** dropping Python 3.9/3.10 support, new runtime dependencies, changing default hook sets, semantic changes to `init` without `--dry-run`.
+- **Never:** enable remote logging/telemetry by default; commit real credentials; vendor unrelated submodules for MVP.
+
+## Success criteria
+
+1. **Python 3.12** installs and passes test suite in CI; `python` constraint in `pyproject.toml` documents supported range.
+2. `secureli scan --format json` writes **valid JSON** to stdout (or configured stream) and exits non-zero on failures; empty/failure cases covered by tests.
+3. `secureli scan --format sarif` emits **SARIF 2.1.0** JSON with at least one `run` and `results` when failures exist; documented limitation if any field is omitted.
+4. `secureli init --dry-run` performs **no filesystem writes** to pre-commit or `.secureli` config paths; output lists intended actions; tested.
+5. `secureli doctor` exits **0** when checks pass, **non-zero** with actionable messages when pre-commit missing, wrong Python, or expected config missing; documented in README.
+6. README (short section) documents new flags and CI example snippet for `scan --format json` (SARIF optional line).
+
+## Implementation order
+
+1. Python 3.12 + Pydantic v2 + dependency fixes (unblocks everything else).
+2. JSON formatter + `--format` wiring (simplest machine output).
+3. SARIF formatter + tests.
+4. `init --dry-run`.
+5. `doctor` + docs.
+
+## Open questions
+
+- Keep 3.9–3.11 in matrix for how long after 3.12 lands?
+- SARIF rule IDs: map from hook IDs only, or include custom scanner IDs uniformly?

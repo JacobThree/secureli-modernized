@@ -6,7 +6,7 @@ from secureli.modules.shared.consts.language import supported_languages
 class SetupAction:
     """Arranges various properties needed to set up the application itself."""
 
-    repo_url = "https://github.com/slalombuild/secureli/blob/main/CONTRIBUTING.md"
+    repo_url = "https://github.com/JacobThree/secureli-modernized/blob/main/README.md"
     docs_url = "https://github.com/slalombuild/secureli/wiki"
 
     def __init__(self, epilog_template_data: str):

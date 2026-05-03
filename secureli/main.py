@@ -194,6 +194,25 @@ def build(color: Color = Color.BLUE):
 
 
 @app.command()
+def doctor(
+    directory: Annotated[
+        Path,
+        Option(
+            ".",
+            "--directory",
+            "-d",
+            help="Run diagnostics against a specific directory",
+        ),
+    ] = Path("."),
+):
+    """
+    Read-only checks for Python support, pre-commit on PATH, and seCureLI hook configuration.
+    """
+    SecureliConfig.FOLDER_PATH = Path(directory)
+    container.doctor_action().run(Path(directory))
+
+
+@app.command()
 def update(
     latest: bool = Option(
         False,

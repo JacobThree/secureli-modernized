@@ -12,6 +12,7 @@ from secureli.actions.action import ActionDependencies
 from secureli.actions.initializer import InitializerAction
 from secureli.actions.scan import ScanAction
 from secureli.actions.build import BuildAction
+from secureli.actions.doctor import DoctorAction
 from secureli.actions.update import UpdateAction
 from secureli.modules.shared.abstractions.version_control_repo import (
     VersionControlRepoAbstraction,
@@ -215,4 +216,12 @@ class Container(containers.DeclarativeContainer):
         UpdateAction,
         action_deps=action_deps,
         updater=updater_service,
+    )
+
+    """Doctor command: read-only environment / config checks"""
+    doctor_action = providers.Factory(
+        DoctorAction,
+        echo=echo,
+        pre_commit=pre_commit_abstraction,
+        secureli_config=secureli_config_repository,
     )

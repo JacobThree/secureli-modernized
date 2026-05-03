@@ -38,6 +38,15 @@ def test_that_build_creates_build_action_and_executes(mock_container: MagicMock)
     mock_container.build_action.assert_called_once()
 
 
+def test_that_doctor_runs_through_container(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["doctor"])
+
+    assert result.exit_code == 0
+    mock_container.init_resources.assert_called_once()
+    mock_container.doctor_action.assert_called_once()
+    mock_container.doctor_action.return_value.run.assert_called_once()
+
+
 def test_that_scan_is_tbd(mock_container: MagicMock):
     secureli.main.scan()
 

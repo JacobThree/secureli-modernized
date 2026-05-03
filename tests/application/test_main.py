@@ -9,7 +9,7 @@ import secureli.container
 import secureli.main
 from secureli.modules.shared.models.install import VerifyOutcome, VerifyResult
 from secureli.modules.shared.models.publish_results import PublishResultsOption
-from secureli.modules.shared.models.scan import ScanMode
+from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
 from secureli.modules.shared.utilities import secureli_version
 
 
@@ -36,6 +36,15 @@ def test_that_build_creates_build_action_and_executes(mock_container: MagicMock)
     secureli.main.build()
 
     mock_container.build_action.assert_called_once()
+
+
+def test_that_doctor_runs_through_container(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["doctor"])
+
+    assert result.exit_code == 0
+    mock_container.init_resources.assert_called_once()
+    mock_container.doctor_action.assert_called_once()
+    mock_container.doctor_action.return_value.run.assert_called_once()
 
 
 def test_that_scan_is_tbd(mock_container: MagicMock):
@@ -135,6 +144,19 @@ def test_that_unsuccessful_init_does_not_run_update(
     mock_container.update_action.return_value.update_hooks.assert_not_called()
 
 
+def test_that_init_passes_dry_run_and_skips_update(mock_container: MagicMock):
+    mock_container.initializer_action.return_value.initialize_repo.return_value = (
+        VerifyResult(outcome=VerifyOutcome.INSTALL_SUCCEEDED)
+    )
+    result = CliRunner().invoke(secureli.main.app, ["init", "--dry-run", "-y"])
+    assert result.exit_code == 0
+    kwargs = (
+        mock_container.initializer_action.return_value.initialize_repo.call_args.kwargs
+    )
+    assert kwargs["dry_run"] is True
+    mock_container.update_action.return_value.update_hooks.assert_not_called()
+
+
 def test_that_scan_implements_file_arg(mock_container: MagicMock):
     result = CliRunner().invoke(secureli.main.app, ["scan", "--file", "test.py"])
     assert result.exit_code == 0
@@ -147,6 +169,7 @@ def test_that_scan_implements_file_arg(mock_container: MagicMock):
         publish_results_condition=PublishResultsOption.NEVER,
         specific_test=None,
         files=["test.py"],
+        output_format=ScanOutputFormat.TEXT,
     )
 
 
@@ -164,6 +187,46 @@ def test_that_scan_implements_multiple_file_args(mock_container: MagicMock):
         publish_results_condition=PublishResultsOption.NEVER,
         specific_test=None,
         files=["test.py", "test2.py"],
+        output_format=ScanOutputFormat.TEXT,
+    )
+
+
+def test_that_scan_passes_json_output_format(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "json"])
+    assert result.exit_code == 0
+    mock_container.scan_action.return_value.scan_repo.assert_called_once_with(
+        folder_path=Path("."),
+        scan_mode=ScanMode.STAGED_ONLY,
+        always_yes=False,
+        publish_results_condition=PublishResultsOption.NEVER,
+        specific_test=None,
+        files=None,
+        output_format=ScanOutputFormat.JSON,
+    )
+
+
+def test_that_scan_format_option_is_case_insensitive(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "JSON"])
+    assert result.exit_code == 0
+    assert (
+        mock_container.scan_action.return_value.scan_repo.call_args.kwargs[
+            "output_format"
+        ]
+        == ScanOutputFormat.JSON
+    )
+
+
+def test_that_scan_passes_sarif_output_format(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "sarif"])
+    assert result.exit_code == 0
+    mock_container.scan_action.return_value.scan_repo.assert_called_once_with(
+        folder_path=Path("."),
+        scan_mode=ScanMode.STAGED_ONLY,
+        always_yes=False,
+        publish_results_condition=PublishResultsOption.NEVER,
+        specific_test=None,
+        files=None,
+        output_format=ScanOutputFormat.SARIF,
     )
 
 

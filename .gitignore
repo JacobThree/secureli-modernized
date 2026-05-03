@@ -248,3 +248,6 @@ fabric.properties
 .secureli/logs
 .secureli/repo-config.yaml
 # End Secureli-generated files
+
+# Local tooling / graph analysis (regenerable AST cache)
+graphify-out/cache/

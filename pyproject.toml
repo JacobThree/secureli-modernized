@@ -27,19 +27,16 @@ install = "poetry install"
 lint = "black --check ."
 precommit = "pre-commit run --config .secureli/.pre-commit-config.yaml --all-files"
 test = ["init", "lint", "coverage_run", "coverage_report"]
-e2e = "bats --verbose-run tests/end-to-end"
-lang-test = "bats --verbose-run tests/end-to-end/test-language-detect.bats"
+e2e = "bash scripts/run-e2e.sh"
+lang-test = "bash scripts/run-e2e.sh --verbose-run tests/end-to-end/test-language-detect.bats"
 
 [tool.poetry.dependencies]
-# Until `python-dependency-injector` supports python 3.12, restrict to python 3.11 and lower
-python = ">= 3.9, < 3.12"
+# Python 3.12+ requires dependency-injector >= 4.42 (wheels + metadata); see python-dependency-injector changelog.
+python = ">= 3.9, < 3.13"
 typer = {version = ">=0.6.1,<0.13.0", extras = ["all"]}
 pygments = "^2.13.0"
-# Uncomment the following line to enable python 3.12 support prior to dependency-injector officially supporting it
-# Remove once this PR is merged: https://github.com/ets-labs/python-dependency-injector/pull/765
-# dependency-injector = { git = "https://github.com/ets-labs/python-dependency-injector.git", branch = "feature/python-3.12" , extras = ["yaml"]}
-dependency-injector = {version = "^4.40.0", extras = ["yaml"]}
-pydantic = "^1.10.2"
+dependency-injector = {version = "^4.42.0", extras = ["yaml"]}
+pydantic = ">=2.10,<3"
 jinja2 = "^3.1.2"
 pathspec = ">=0.10.1,<0.13.0"
 cfgv = "^3.3.1"
@@ -48,6 +45,7 @@ requests = "^2.31.0"
 pyyaml = ">=6.0.1"
 chardet = "^5.2.0"
 gitpython = "^3.1.43"
+pydantic-settings = ">=2.6,<3"
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"

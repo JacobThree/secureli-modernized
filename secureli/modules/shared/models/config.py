@@ -1,6 +1,8 @@
 from enum import Enum
 from typing import Any, Optional
+
 import pydantic
+from pydantic import Field
 
 
 class Repo(pydantic.BaseModel):
@@ -34,7 +36,7 @@ class LinterConfig(pydantic.BaseModel):
 class SecureliConfig(pydantic.BaseModel):
     languages: Optional[list[str]] = None
     version_installed: Optional[str] = None
-    last_hook_update_check: Optional[int] = 0
+    last_hook_update_check: Optional[int] = Field(default=0)
 
 
 class DeprecatedSecureliConfig(pydantic.BaseModel):

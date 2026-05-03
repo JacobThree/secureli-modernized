@@ -9,7 +9,7 @@ from secureli.container import Container
 from secureli.modules.shared.models.echo import Color
 from secureli.modules.shared.models.install import VerifyOutcome
 from secureli.modules.shared.models.publish_results import PublishResultsOption
-from secureli.modules.shared.models.scan import ScanMode
+from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
 from secureli.modules.shared.resources import read_resource
 from secureli.settings import Settings
 import secureli.repositories.secureli_config as SecureliConfig
@@ -96,16 +96,26 @@ def init(
         "--preserve-precommit-config",
         help="Preserve the existing pre-commit configuration",
     ),
+    dry_run: bool = Option(
+        False,
+        "--dry-run",
+        help="Show what init would do without writing `.secureli/`, `.secureli.yaml`, hooks, or init logs",
+    ),
 ):
     """
     Detect languages and initialize pre-commit hooks and linters for the project
     """
+    # Typer supplies real booleans via CLI; direct `init()` calls in tests otherwise
+    # receive placeholder Option markers — coerce so `not dry_run` behaves correctly.
+    if not isinstance(dry_run, bool):
+        dry_run = False
+
     SecureliConfig.FOLDER_PATH = Path(directory)
 
     init_result = container.initializer_action().initialize_repo(
-        Path(directory), reset, yes, preserve_precommit_config
+        Path(directory), reset, yes, preserve_precommit_config, dry_run=dry_run
     )
-    if init_result.outcome in [
+    if not dry_run and init_result.outcome in [
         VerifyOutcome.UP_TO_DATE,
         VerifyOutcome.UPDATE_SUCCEEDED,
     ]:
@@ -148,6 +158,17 @@ def scan(
             This can be included multiple times to scan multiple files e.g '--file file1 --file file2'
         """,
     ),
+    output_format: ScanOutputFormat = Option(
+        ScanOutputFormat.TEXT,
+        "--format",
+        help=(
+            "How to write scan results to stdout: "
+            "`text` (default) echoes hook output plus a summary line on success; "
+            "`json` prints one JSON object (schema_version + ScanResult); "
+            "`sarif` prints one SARIF 2.1.0 log (see README for consumer limitations)."
+        ),
+        case_sensitive=False,
+    ),
 ):
     """
     Performs an explicit check of the repository to detect security issues without remote logging.
@@ -160,6 +181,7 @@ def scan(
         publish_results_condition=publish_results,
         specific_test=specific_test,
         files=files,
+        output_format=output_format,
     )
 
 
@@ -169,6 +191,25 @@ def build(color: Color = Color.BLUE):
     (Easter Egg) Arrange a visit with our fearless security leader!
     """
     container.build_action().print_build(color)
+
+
+@app.command()
+def doctor(
+    directory: Annotated[
+        Path,
+        Option(
+            ".",
+            "--directory",
+            "-d",
+            help="Run diagnostics against a specific directory",
+        ),
+    ] = Path("."),
+):
+    """
+    Read-only checks for Python support, pre-commit on PATH, and seCureLI hook configuration.
+    """
+    SecureliConfig.FOLDER_PATH = Path(directory)
+    container.doctor_action().run(Path(directory))
 
 
 @app.command()

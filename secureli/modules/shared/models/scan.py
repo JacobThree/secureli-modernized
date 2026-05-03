@@ -13,6 +13,14 @@ class ScanMode(str, Enum):
     ALL_FILES = "all-files"
 
 
+class ScanOutputFormat(str, Enum):
+    """How scan results are written to stdout."""
+
+    TEXT = "text"
+    JSON = "json"
+    SARIF = "sarif"
+
+
 class ScanFailure(pydantic.BaseModel):
     """
     Represents the details of a failed rule from a scan

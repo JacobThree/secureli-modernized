@@ -33,7 +33,7 @@ def settings_dict() -> dict:
                 ],
             )
         ]
-    ).dict()
+    ).model_dump()
 
 
 @pytest.fixture()

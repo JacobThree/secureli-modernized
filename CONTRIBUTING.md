@@ -159,7 +159,9 @@ As of June 9, 2023, this repo is being built on and tested against Ubuntu Jammy 
 
 - Try it out!
   - With the virtual environment still activated, and having installed all dependencies (i.e. `poetry shell && poetry install`), run `secureli` and check out the Usage instructions
-  - After the first run, you can run end-to-end BATS tests with `poe e2e`
+  - Run end-to-end BATS tests with **`poetry run poe e2e`** (or `poetry shell` then `poe e2e`) after `poetry install` — invoking **`scripts/run-e2e.sh` alone uses your default `python`**, not the Poetry env, so imports like **`typer` will fail** — they do **not** require `poe test` first. (`poe test` runs `secureli init -y`, which updates `.secureli/`.) CI runs **`poe e2e` in its own workflow job** (Python 3.9 and 3.12 on Linux) with no pytest/`poe test` beforehand, mirroring **clone → install → e2e** so regressions aren’t masked by a “warm” tree.
+  - The first local `poe e2e` clones **bats-support** and **bats-assert** into **`.cache/bats-e2e-libs/`** (git over the network, then cached). Alternatively set **`BATS_LIBS_ROOT`** yourself to match [bats-action](https://github.com/bats-core/bats-action)’s layout if you vendor those repos.
+  - On macOS, **`secureli scan`** in e2e may trigger a system prompt for **Swift / Xcode toolchain** binaries when sample projects under **`tests/end-to-end/test-data/`** are scanned—allow once if you intend to run the full suite locally.
 
 # Development with PyCharm
 

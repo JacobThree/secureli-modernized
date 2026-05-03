@@ -70,6 +70,7 @@ class Action(ABC):
         files: list[Path],
         action_source: install.ActionSource,
         preserve_precommit_config: bool = False,
+        dry_run: bool = False,
     ) -> install.VerifyResult:
         """
         Installs, upgrades or verifies the current seCureLI installation
@@ -82,15 +83,26 @@ class Action(ABC):
         :param preserve_precommit_config: If true, preserve the existing pre-commit configuration
         """
 
+        init_dry_run = dry_run and action_source == install.ActionSource.INITIALIZER
+        if init_dry_run:
+            self.action_deps.echo.print(
+                "Dry-run: no writes to `.secureli/`, `.secureli.yaml`, `.git/hooks/pre-commit`, or init logs."
+            )
+
         is_config_out_of_date = (
             self.action_deps.secureli_config.verify()
             == ConfigModels.VerifyConfigOutcome.OUT_OF_DATE
         )
         if is_config_out_of_date:
-            update_result = self._update_config(always_yes)
-            did_update_fail = update_result is not None
-            if did_update_fail:
-                return update_result
+            if init_dry_run:
+                self.action_deps.echo.print(
+                    "- Would migrate `.secureli/repo-config.yaml` to the current schema (skipped)."
+                )
+            else:
+                update_result = self._update_config(always_yes)
+                did_update_fail = update_result is not None
+                if did_update_fail:
+                    return update_result
 
         pre_commit_config_location_is_correct = self.action_deps.hooks_scanner.pre_commit.get_pre_commit_config_path_is_correct(
             folder_path
@@ -105,19 +117,24 @@ class Action(ABC):
             and not pre_commit_config_location_is_correct
         )
         if pre_commit_to_preserve:
-            update_result: install.VerifyResult = (
-                self._update_secureli_pre_commit_config_location(
-                    folder_path, always_yes
+            if init_dry_run:
+                self.action_deps.echo.print(
+                    "- Would prompt to move the root `.pre-commit-config.yaml` into `.secureli/` (skipped)."
                 )
-            )
-
-            if update_result.outcome != install.VerifyOutcome.UPDATE_SUCCEEDED:
-                self.action_deps.echo.error(
-                    "seCureLI .pre-commit-config.yaml could not be moved."
-                )
-                return update_result
             else:
-                preferred_config_path = update_result.file_path
+                update_result: install.VerifyResult = (
+                    self._update_secureli_pre_commit_config_location(
+                        folder_path, always_yes
+                    )
+                )
+
+                if update_result.outcome != install.VerifyOutcome.UPDATE_SUCCEEDED:
+                    self.action_deps.echo.error(
+                        "seCureLI .pre-commit-config.yaml could not be moved."
+                    )
+                    return update_result
+                else:
+                    preferred_config_path = update_result.file_path
 
         if (
             not pre_commit_config_location_is_correct
@@ -167,14 +184,21 @@ class Action(ABC):
                 always_yes,
                 preferred_config_path if pre_commit_to_preserve else None,
                 preserve_precommit_config,
+                dry_run,
             )
         else:
-            self.action_deps.echo.print(
-                (
-                    "seCureLI is installed and up-to-date for the "
-                    f"following language(s): {format_sentence_list(languages)}"
+            if init_dry_run:
+                self.action_deps.echo.print(
+                    "Dry-run: seCureLI already initialized for detected languages "
+                    f"({format_sentence_list(languages)}); nothing to install."
                 )
-            )
+            else:
+                self.action_deps.echo.print(
+                    (
+                        "seCureLI is installed and up-to-date for the "
+                        f"following language(s): {format_sentence_list(languages)}"
+                    )
+                )
             return install.VerifyResult(
                 outcome=install.VerifyOutcome.UP_TO_DATE,
                 config=config,
@@ -200,6 +224,7 @@ class Action(ABC):
         always_yes: bool,
         pre_commit_config_location: Path = None,
         preserve_precommit_config: bool = False,
+        dry_run: bool = False,
     ) -> install.VerifyResult:
         """
         Installs seCureLI into the given folder path and returns the new configuration
@@ -238,6 +263,7 @@ class Action(ABC):
             language_config_result,
             new_install,
             preserve_precommit_config,
+            dry_run=dry_run,
         )
 
         for error_msg in metadata.linter_config_write_errors:
@@ -247,28 +273,69 @@ class Action(ABC):
             languages=detected_languages,
             version_installed=metadata.version,
         )
-        self.action_deps.secureli_config.save(config)
+        if not dry_run:
+            self.action_deps.secureli_config.save(config)
 
-        settings.telemetry = RepositoryModels.TelemetrySettings(
-            api_url=self._prompt_get_telemetry_api_url(always_yes)
+        if dry_run:
+            settings.telemetry = RepositoryModels.TelemetrySettings(
+                api_url=TELEMETRY_DEFAULT_ENDPOINT,
+            )
+        else:
+            settings.telemetry = RepositoryModels.TelemetrySettings(
+                api_url=self._prompt_get_telemetry_api_url(always_yes)
+            )
+
+        if not dry_run:
+            self.action_deps.settings.save(settings)
+
+        if dry_run:
+            self._print_initializer_dry_run_install_summary(
+                detected_languages, new_install
+            )
+
+        self._run_post_install_scan(
+            folder_path, config, metadata, new_install, dry_run=dry_run
         )
-        self.action_deps.settings.save(settings)
 
-        # post-install
-        self._run_post_install_scan(folder_path, config, metadata, new_install)
-
-        self.action_deps.echo.print(
-            (
-                "seCureLI has been installed successfully for the following language(s): "
-                f"{format_sentence_list(config.languages)}.\n"
-            ),
-            color=Color.CYAN,
-            bold=True,
-        )
+        if not dry_run:
+            self.action_deps.echo.print(
+                (
+                    "seCureLI has been installed successfully for the following language(s): "
+                    f"{format_sentence_list(config.languages)}.\n"
+                ),
+                color=Color.CYAN,
+                bold=True,
+            )
         return install.VerifyResult(
             outcome=install.VerifyOutcome.INSTALL_SUCCEEDED,
             config=config,
         )
+
+    def _print_initializer_dry_run_install_summary(
+        self,
+        detected_languages: list[str],
+        new_install: bool,
+    ) -> None:
+        self.action_deps.echo.print("\nDry-run checklist (planned only):\n")
+        self.action_deps.echo.print(
+            f"- Write `.secureli/repo-config.yaml` for languages: "
+            f"{format_sentence_list(detected_languages)}."
+        )
+        self.action_deps.echo.print(
+            "- Render `.secureli/.pre-commit-config.yaml` and any linter YAML under `.secureli/` "
+            "(none of these files are modified in dry-run)."
+        )
+        self.action_deps.echo.print(
+            "- Would write `.secureli.yaml` with telemetry defaults (preview-only; prompt skipped)."
+        )
+        if new_install:
+            self.action_deps.echo.print(
+                "- Install `pre-commit` if needed, run hook upgrades, optionally run secrets scan."
+            )
+        else:
+            self.action_deps.echo.print(
+                "- Extend configs for newly detected languages; repeat hook/update/scan flows when applicable."
+            )
 
     def _pre_install_checks(
         self,
@@ -333,6 +400,7 @@ class Action(ABC):
         config: ConfigModels.SecureliConfig,
         metadata: language.LanguageMetadata,
         new_install: bool,
+        dry_run: bool = False,
     ):
         """
         Initializes and runs secrets detection after installation if applicable
@@ -342,6 +410,9 @@ class Action(ABC):
         :param new_install: Used to determine if the install is new or
         if additional languages are being added
         """
+
+        if dry_run:
+            return
 
         if new_install:
             pre_commit_install_result = self.action_deps.updater.pre_commit.install(

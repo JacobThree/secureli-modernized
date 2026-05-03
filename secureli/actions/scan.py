@@ -15,7 +15,8 @@ from secureli.modules.shared.models.logging import LogAction
 from secureli.modules.shared.models.publish_results import PublishResultsOption
 from secureli.modules.shared.models.result import Result
 from secureli.modules.core.core_services.hook_scanner import HooksScannerService
-from secureli.modules.shared.models.scan import ScanMode
+from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
+from secureli.modules.shared.scan_output import build_scan_payload, build_sarif_payload
 from secureli.settings import Settings
 from secureli.modules.shared import utilities
 
@@ -79,6 +80,7 @@ class ScanAction(action.Action):
         publish_results_condition: PublishResultsOption = PublishResultsOption.NEVER,
         specific_test: Optional[str] = None,
         files: Optional[str] = None,
+        output_format: ScanOutputFormat = ScanOutputFormat.TEXT,
     ):
         """
         Scans the given directory, or offers to go through initialization if that has not
@@ -137,11 +139,12 @@ class ScanAction(action.Action):
         )
 
         details = scan_result.output or "Unknown output during scan"
-        self.action_deps.echo.print(details)
+        if output_format == ScanOutputFormat.TEXT:
+            self.action_deps.echo.print(details)
 
         failure_count = len(scan_result.failures)
         scan_result_failures_json_string = json.dumps(
-            [ob.__dict__ for ob in scan_result.failures]
+            [f.model_dump(mode="python") for f in scan_result.failures]
         )
 
         individual_failure_count = utilities.convert_failures_to_failure_count(
@@ -161,13 +164,22 @@ class ScanAction(action.Action):
         self.publish_results(
             publish_results_condition,
             action_successful=scan_result.successful,
-            log_str=log_data.json(exclude_none=True),
+            log_str=log_data.model_dump_json(exclude_none=True),
         )
-        if scan_result.successful:
+        if output_format == ScanOutputFormat.JSON:
+            self.action_deps.echo.print(
+                json.dumps(build_scan_payload(scan_result), ensure_ascii=False),
+            )
+        elif output_format == ScanOutputFormat.SARIF:
+            self.action_deps.echo.print(
+                json.dumps(build_sarif_payload(scan_result), ensure_ascii=False),
+            )
+        elif scan_result.successful:
             self.action_deps.echo.print(
                 "Scan executed successfully and detected no issues!"
             )
-        else:
+
+        if not scan_result.successful:
             sys.exit(ExitCode.SCAN_ISSUES_DETECTED.value)
 
     def _check_secureli_hook_updates(self, folder_path: Path) -> install.VerifyResult:

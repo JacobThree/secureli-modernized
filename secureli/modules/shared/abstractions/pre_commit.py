@@ -63,7 +63,7 @@ class InstallResult(pydantic.BaseModel):
     """
 
     successful: bool
-    backup_hook_path: Optional[str]
+    backup_hook_path: Optional[str] = None
 
 
 class PreCommitAbstraction:
@@ -400,6 +400,7 @@ class PreCommitAbstraction:
         self.echo.print(
             f"Moving {existing_config_file_path} to {new_config_file_path}..."
         )
+        new_config_file_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(existing_config_file_path, new_config_file_path)
         return new_config_file_path
 

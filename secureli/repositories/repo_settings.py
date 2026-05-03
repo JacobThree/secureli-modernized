@@ -20,7 +20,11 @@ class SecureliRepository:
         """
         # Removes empty keys to prevent type errors
         settings_dict = {
-            key: value for (key, value) in settings.dict().items() if value is not None
+            key: value
+            for key, value in settings.model_dump(
+                exclude_none=True, mode="python"
+            ).items()
+            if value is not None
         }
 
         # Converts echo Level to string
@@ -41,4 +45,4 @@ class SecureliRepository:
 
         with open(self.secureli_file_path, "r") as f:
             data = yaml.safe_load(f)
-            return SecureliFile.parse_obj(data)
+            return SecureliFile.model_validate(data)

@@ -15,17 +15,17 @@ class SecureliConfigRepository:
         Save the specified configuration to the .secureli folder
         :param secureli_config: The populated configuration to save
         """
-        secureli_folder_path = self._initialize_secureli_directory()
+        secureli_folder_path = self._ensure_secureli_folder()
         secureli_config_path = secureli_folder_path / "repo-config.yaml"
         with open(secureli_config_path, "w") as f:
-            yaml.dump(secureli_config.dict(), f)
+            yaml.dump(secureli_config.model_dump(exclude_none=True, mode="python"), f)
 
     def load(self) -> config.SecureliConfig:
         """
         Load the seCureLI config from the expected configuration file path or return a new
         configuration object, capable of being modified and saved via the `save` method
         """
-        secureli_folder_path = self._initialize_secureli_directory()
+        secureli_folder_path = self._secureli_folder_path()
         secureli_config_path = secureli_folder_path / "repo-config.yaml"
 
         if not secureli_config_path.exists():
@@ -33,13 +33,13 @@ class SecureliConfigRepository:
 
         with open(secureli_config_path, "r") as f:
             data = yaml.safe_load(f)
-            return config.SecureliConfig.parse_obj(data)
+            return config.SecureliConfig.model_validate(data)
 
     def verify(self) -> config.VerifyConfigOutcome:
         """
         Check secureli config and verify that it matches most current schema.
         """
-        secureli_folder_path = self._initialize_secureli_directory()
+        secureli_folder_path = self._secureli_folder_path()
         secureli_config_path = secureli_folder_path / "repo-config.yaml"
         if not secureli_config_path.exists():
             return config.VerifyConfigOutcome.MISSING
@@ -47,12 +47,7 @@ class SecureliConfigRepository:
         with open(secureli_config_path, "r") as f:
             current_data = yaml.safe_load(f)
 
-        expected_config_schema = config.SecureliConfig.schema()
-
-        expected_keys = []
-
-        for key in expected_config_schema["properties"]:
-            expected_keys.append(key)
+        expected_keys = set(config.SecureliConfig.model_fields.keys())
 
         for key in current_data:
             if key not in expected_keys:
@@ -64,14 +59,14 @@ class SecureliConfigRepository:
         """
         Update any older config version to match most current config.
         """
-        secureli_folder_path = self._initialize_secureli_directory()
+        secureli_folder_path = self._secureli_folder_path()
         secureli_config_path = secureli_folder_path / "repo-config.yaml"
         if not secureli_config_path.exists():
             return config.SecureliConfig()
 
         with open(secureli_config_path, "r") as f:
             data = yaml.safe_load(f)
-            old_config = config.DeprecatedSecureliConfig.parse_obj(data)
+            old_config = config.DeprecatedSecureliConfig.model_validate(data)
         languages: list[str] | None = (
             [old_config.overall_language] if old_config.overall_language else None
         )
@@ -81,12 +76,14 @@ class SecureliConfigRepository:
             version_installed=old_config.version_installed,
         )
 
-    def _initialize_secureli_directory(self):
-        """
-        Creates the .secureli folder within the current directory if needed.
-        :return: The folder path of the .secureli folder that either exists or was just created.
-        """
+    def _secureli_folder_path(self) -> Path:
+        return Path(FOLDER_PATH) / ".secureli"
 
-        secureli_folder_path = Path(FOLDER_PATH) / ".secureli"
+    def _ensure_secureli_folder(self) -> Path:
+        """
+        Ensures `.secureli/` exists. Used only for writes (e.g. save); reads use
+        `_secureli_folder_path` without mkdir so dry-run/init planning does not create the folder.
+        """
+        secureli_folder_path = self._secureli_folder_path()
         secureli_folder_path.mkdir(parents=True, exist_ok=True)
         return secureli_folder_path

@@ -26,8 +26,12 @@ https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one -
 - [Usage](#usage)
   - [Help](#help)
   - [Init](#init)
+    - [Init dry-run (`--dry-run`)](#init-dry-run---dry-run)
     - [Preserving Pre-Commit Config](#preserving-pre-commit-config)
+  - [Doctor](#doctor)
   - [Scan](#scan)
+    - [Machine-readable output (`--format`)](#machine-readable-output---format)
+    - [GitHub Actions machine-readable scan](#github-actions-machine-readable-scan)
     - [Scanned Files](#scanned-files)
     - [PII Scan](#pii-scan)
   - [Custom Regex Scan](#custom-regex-scan)
@@ -117,9 +121,34 @@ All you need to do is run:
 
 Running `secureli init` will allow seCureLI to detect the languages in your repo, install pre-commit, install all the appropriate pre-commit hooks for your local repo, run a scan for secrets in your local repo, and update the installed hooks.
 
+#### Init dry-run (`--dry-run`)
+
+To preview what `init` would do **without creating or editing** `.secureli/`, `.secureli.yaml`, git hooks, or init log files:
+
+```bash
+secureli init --dry-run --yes
+```
+
+You still get language detection and a short checklist printed to stdout. No automatic `secureli update` runs after dry-run (`--dry-run` is for planning only). Use `secureli init --help` for all init flags.
+
 #### Preserving Pre-Commit Config
 
 If you have an existing pre-commit config file you want to preserve when running `secureli init`, you can use the `--preserve-precommit-config` flag. This is useful for example when checking out a repo with an existing pre-commit config file.
+
+### Doctor
+
+`doctor` performs **read-only** checks useful before or after onboarding a repo:
+
+- Current **Python** is within the **`Requires-Python`** range published with the **`secureli`** package.
+- The **`pre-commit`** executable is on **`PATH`**.
+- When seCureLI metadata says the repo is initialized, the expected **hook config** YAML exists under `.secureli/` and parses.
+
+```bash
+secureli doctor
+secureli doctor --directory path/to/repo
+```
+
+Exit code **0** when all checks pass; **non-zero** (doctor-specific) when something fails, with a short actionable message printed to stderr/terminal. Pair with **`init`** and **`scan`** diagnostics in CI when useful.
 
 ### Scan
 
@@ -130,6 +159,69 @@ To manually trigger a scan, run:
 ```
 
 This will run through all hooks and custom scans, unless a `--specific-test` option is used. The default is to scan staged files only. To scan all files instead, use the `--mode all-files` option.
+
+#### Machine-readable output (`--format`)
+
+By default (`--format text`, or omitted), `secureli scan` prints human-readable hook output. For automation and CI you can emit one document to stdout:
+
+| Value | Meaning |
+|-------|---------|
+| `json` | One JSON object: `schema_version` plus merged `ScanResult` fields (`successful`, `output`, `failures` with hook metadata). |
+| `sarif` | One **[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)** log (`version`, `$schema`, `runs[]` with `tool.driver.rules` and `results`). Each result uses **`ruleId` = `ScanFailure.id`** (the pre-commit hook id or custom-scan id). The hook repository URL and `exitCode` appear in `message.text` and in `partialFingerprints` as `secureli/repo` and `secureli/exitCode`. |
+
+Examples:
+
+```bash
+secureli scan --format json
+secureli scan --format sarif
+```
+
+**Limitations (SARIF):** This output is intentionally minimal versus full ingestion expectations for **[GitHub Advanced Security](https://docs.github.com/en/code-security)** and other SARIF viewers. There are no snippets, threaded flow locations, stable fingerprints, remediation blocks, taxonomy references, or real line/column spans from hooks (locations default to line 1, column 1). A consumer may reject or downgrade the log depending on required fields; tighten the mapping after you choose a specific upload path.
+
+Failed scans still exit with a non-zero status (same exit code as plain text mode).
+
+#### GitHub Actions machine-readable scan
+
+Minimal workflow to run **`secureli`** in CI and persist **JSON** results (fails the job if hooks report issues—the same behavior as **`text`** mode):
+
+```yaml
+# .github/workflows/secureli-scan.yml — requires the repo already initialized with seCureLI
+# (`secureli init` locally, committing `.secureli/` metadata and hook config).
+
+name: seCureLI scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install seCureLI
+        run: pip install secureli
+
+      - name: Run scan (JSON to artifact-friendly stdout)
+        shell: bash
+        run: |
+          set -eo pipefail
+          secureli scan --mode all-files --format json | tee scan-result.json
+
+      # Optional — SARIF suitable for archiving or uploads that accept SARIF 2.1.0 logs:
+      # - run: secureli scan --mode all-files --format sarif > secureli-scan.sarif
+
+      # Optional quick environment check — does not mutate the repo:
+      # - run: secureli doctor
+```
+
+Adjust **`python-version`** and triggers to match your project. Interpret **`scan-result.json`** in a follow-up step (e.g. upload with `actions/upload-artifact`) if you want the file retained after the step.
 
 #### Scanned Files
 

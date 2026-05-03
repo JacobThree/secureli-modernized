@@ -182,6 +182,8 @@ Each increment should be independently revertable:
 
 ## Working with Agents
 
+**This workspace (secureli-modernized):** Prefix **agent-run shell commands** with **`RTK`** (project runtime wrapper — see `.cursor/stack-check.md`) so tooling uses the verified local stack, e.g. `RTK poetry install`, `RTK poetry run pytest`, not bare `poetry` / `pip` unless the human says otherwise. If **`RTK` is missing or errors in the agent environment**, use **`python3 -m poetry …`** (same operations) so the task still completes without the shim.
+
 When directing an agent to implement incrementally:
 
 ```

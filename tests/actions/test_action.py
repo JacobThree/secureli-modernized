@@ -823,7 +823,7 @@ def test_that_prompt_to_install_does_not_prompt_if_always_yes(
     )
 
     assert result == True
-    mock_echo.confirm.not_called()
+    mock_echo.confirm.assert_not_called()
 
 
 def test_that_post_install_scan_creates_pre_commit_on_new_install(

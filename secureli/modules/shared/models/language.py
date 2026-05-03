@@ -1,6 +1,9 @@
 from pathlib import Path
 from typing import Any, Optional
+
 import pydantic
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from secureli.modules.shared.models.config import LinterConfig
 
@@ -49,8 +52,8 @@ class LanguagePreCommitResult(pydantic.BaseModel):
 
 class LanguageMetadata(pydantic.BaseModel):
     version: str
-    security_hook_id: Optional[str]
-    linter_config_write_errors: Optional[list[str]] = []
+    security_hook_id: Optional[str] = None
+    linter_config_write_errors: list[str] = Field(default_factory=list)
 
 
 class BuildConfigResult(pydantic.BaseModel):
@@ -72,9 +75,11 @@ class LinterConfigWriteResult(pydantic.BaseModel):
     error_messages: list[str]
 
 
-class LanguageSupportSettings(pydantic.BaseSettings):
+class LanguageSupportSettings(BaseSettings):
     """
     Settings that affect how seCureLI performs language analysis and support.
     """
 
-    command_timeout_seconds: int = pydantic.Field(default=300)
+    model_config = SettingsConfigDict(extra="ignore")
+
+    command_timeout_seconds: int = Field(default=300)

@@ -9,17 +9,19 @@ def test_that_secureli_yaml_settings_guards_against_missing_yaml_file(
     mocker: MockerFixture,
 ):
     path_instance = MagicMock()
+    path_instance.__truediv__ = MagicMock(return_value=path_instance)
     path_instance.exists.return_value = False
     path_class = mocker.patch("secureli.settings.Path")
     path_class.return_value = path_instance
 
-    assert not settings.secureli_yaml_settings(settings.Settings())
+    assert settings.secureli_yaml_settings() == {}
 
 
 def test_that_secureli_yaml_settings_processes_present_yaml_file(
     mocker: MockerFixture,
 ):
     path_instance = MagicMock()
+    path_instance.__truediv__ = MagicMock(return_value=path_instance)
     path_instance.exists.return_value = True
     path_class = mocker.patch("secureli.settings.Path")
     path_class.return_value = path_instance
@@ -31,6 +33,6 @@ def test_that_secureli_yaml_settings_processes_present_yaml_file(
     )
     mocker.patch("builtins.open", mock_open)
 
-    result = settings.secureli_yaml_settings(settings.Settings())
+    result = settings.secureli_yaml_settings()
     assert "language_support" in result
     assert result["language_support"]["command_timeout_seconds"] == 12345

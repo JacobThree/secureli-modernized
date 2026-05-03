@@ -562,8 +562,10 @@ def test_that_verify_install_continues_after_pre_commit_config_file_moved(
     mock_echo: MagicMock,
 ):
     with (patch.object(Path, "exists", return_value=True),):
+        target = test_folder_path / ".secureli" / ".pre-commit-config.yaml"
+        mock_hooks_scanner.pre_commit.migrate_config_file.return_value = target
         mock_hooks_scanner.pre_commit.get_preferred_pre_commit_config_path.return_value = (
-            test_folder_path / ".secureli" / ".pre-commit-config.yaml"
+            target
         )
         mock_hooks_scanner.pre_commit.get_pre_commit_config_path_is_correct.return_value = (
             False
@@ -610,6 +612,9 @@ def test_that_update_secureli_pre_commit_config_location_moves_file(
     mock_echo: MagicMock,
 ):
     update_file_location = test_folder_path / ".secureli" / ".pre-commit-config.yaml"
+    mock_hooks_scanner.pre_commit.migrate_config_file.return_value = (
+        update_file_location
+    )
     update_result = action._update_secureli_pre_commit_config_location(
         update_file_location, True
     )
@@ -644,6 +649,9 @@ def test_that_update_secureli_pre_commit_config_location_cancels_on_user_respons
 ):
     mock_echo.confirm.return_value = False
     update_file_location = test_folder_path / ".secureli" / ".pre-commit-config.yaml"
+    mock_hooks_scanner.pre_commit.get_pre_commit_config_path.return_value = Path(
+        "legacy/.pre-commit-config.yaml"
+    )
     update_result = action._update_secureli_pre_commit_config_location(
         update_file_location, False
     )

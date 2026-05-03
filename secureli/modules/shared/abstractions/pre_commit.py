@@ -63,7 +63,7 @@ class InstallResult(pydantic.BaseModel):
     """
 
     successful: bool
-    backup_hook_path: Optional[str]
+    backup_hook_path: Optional[str] = None
 
 
 class PreCommitAbstraction:

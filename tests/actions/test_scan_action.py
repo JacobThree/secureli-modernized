@@ -424,7 +424,7 @@ def test_verify_install_is_called_with_commted_files(
     mock_language_analyzer: MagicMock,
 ):
     mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
-        languages=["RadLang"], version_installed=1
+        languages=["RadLang"], version_installed="1"
     )
 
     mock_files = ["file1.py", "file2.py"]
@@ -451,7 +451,7 @@ def test_verify_install_is_called_with_user_specified_files(
     mock_language_analyzer: MagicMock,
 ):
     mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
-        languages=["RadLang"], version_installed=1
+        languages=["RadLang"], version_installed="1"
     )
 
     mock_files = ["file1.py", "file2.py"]
@@ -478,7 +478,7 @@ def test_verify_install_is_called_with_no_specified_files(
     mock_language_analyzer: MagicMock,
 ):
     mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
-        languages=["RadLang"], version_installed=1
+        languages=["RadLang"], version_installed="1"
     )
 
     mock_file_repo.list_staged_files.return_value = None
@@ -500,7 +500,7 @@ def test_get_commited_files_returns_commit_diff(
     mock_secureli_config: MagicMock,
 ):
     mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
-        languages=["RadLang"], version_installed=1
+        languages=["RadLang"], version_installed="1"
     )
     mock_files = [Path("file1.py"), Path("file2.py")]
     mock_file_repo.list_staged_files.return_value = mock_files
@@ -528,7 +528,7 @@ def test_get_commited_files_returns_when_scan_mode_is_not_staged_only(
     mock_secureli_config: MagicMock,
 ):
     mock_secureli_config.load.return_value = ConfigModels.SecureliConfig(
-        languages=["RadLang"], version_installed=1
+        languages=["RadLang"], version_installed="1"
     )
     result = scan_action._get_commited_files(
         scan_mode=ScanMode.ALL_FILES, folder_path=test_folder_path

@@ -18,7 +18,7 @@ class SecureliConfigRepository:
         secureli_folder_path = self._initialize_secureli_directory()
         secureli_config_path = secureli_folder_path / "repo-config.yaml"
         with open(secureli_config_path, "w") as f:
-            yaml.dump(secureli_config.dict(), f)
+            yaml.dump(secureli_config.model_dump(exclude_none=True, mode="python"), f)
 
     def load(self) -> config.SecureliConfig:
         """
@@ -33,7 +33,7 @@ class SecureliConfigRepository:
 
         with open(secureli_config_path, "r") as f:
             data = yaml.safe_load(f)
-            return config.SecureliConfig.parse_obj(data)
+            return config.SecureliConfig.model_validate(data)
 
     def verify(self) -> config.VerifyConfigOutcome:
         """
@@ -47,12 +47,7 @@ class SecureliConfigRepository:
         with open(secureli_config_path, "r") as f:
             current_data = yaml.safe_load(f)
 
-        expected_config_schema = config.SecureliConfig.schema()
-
-        expected_keys = []
-
-        for key in expected_config_schema["properties"]:
-            expected_keys.append(key)
+        expected_keys = set(config.SecureliConfig.model_fields.keys())
 
         for key in current_data:
             if key not in expected_keys:
@@ -71,7 +66,7 @@ class SecureliConfigRepository:
 
         with open(secureli_config_path, "r") as f:
             data = yaml.safe_load(f)
-            old_config = config.DeprecatedSecureliConfig.parse_obj(data)
+            old_config = config.DeprecatedSecureliConfig.model_validate(data)
         languages: list[str] | None = (
             [old_config.overall_language] if old_config.overall_language else None
         )

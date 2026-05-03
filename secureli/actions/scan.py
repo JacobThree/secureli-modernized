@@ -141,7 +141,7 @@ class ScanAction(action.Action):
 
         failure_count = len(scan_result.failures)
         scan_result_failures_json_string = json.dumps(
-            [ob.__dict__ for ob in scan_result.failures]
+            [f.model_dump(mode="python") for f in scan_result.failures]
         )
 
         individual_failure_count = utilities.convert_failures_to_failure_count(
@@ -161,7 +161,7 @@ class ScanAction(action.Action):
         self.publish_results(
             publish_results_condition,
             action_successful=scan_result.successful,
-            log_str=log_data.json(exclude_none=True),
+            log_str=log_data.model_dump_json(exclude_none=True),
         )
         if scan_result.successful:
             self.action_deps.echo.print(

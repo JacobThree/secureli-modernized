@@ -85,4 +85,4 @@ class LoggingService:
         # additional folder structure, like `bugfix/` or `feature/`
         path_to_log.parent.mkdir(parents=True, exist_ok=True)
         with open(path_to_log, "a") as f:
-            f.writelines([log_entry.json(exclude_none=True) + "\n"])
+            f.writelines([log_entry.model_dump_json(exclude_none=True) + "\n"])

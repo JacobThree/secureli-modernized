@@ -1,4 +1,4 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# This workflow will install Python dependencies, run tests and lint across supported Python versions
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
 # These jobs are specifically designed to test the codebase
 # and ensure that basic contributing from both mac and windows will work
@@ -41,8 +41,12 @@ jobs:
 
 
   build-linux:
-    name: Linux
+    name: Linux (${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -54,12 +58,12 @@ jobs:
       - name: Set up Poetry
         run: pip install poetry
 
-      - name: Set up Python 3.9
+      - name: Set up Python ${{ matrix.python-version }}
         id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
-          cache: 'poetry'
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
 
       - name: Set Up Project
         run: |

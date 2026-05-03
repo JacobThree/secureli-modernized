@@ -99,13 +99,12 @@ jobs:
   test-pypi-macos:
     runs-on: macos-latest
     steps:
-      # This step is needed to keep us on python 3.11 for now, since dependency-injector doesn't yet support python 3.12.
-      # It can be removed once this PR is merged: https://github.com/ets-labs/python-dependency-injector/pull/765
-      - name: Install Python 3.11
+      # PyPI smoke: validates published wheels on Python 3.12 (requires dependency-injector ^4.42 in the shipped release).
+      - name: Set up Python 3.12
         id: setup-python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Cache pip repo
         id: cache-pip-repo-mac

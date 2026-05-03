@@ -96,16 +96,26 @@ def init(
         "--preserve-precommit-config",
         help="Preserve the existing pre-commit configuration",
     ),
+    dry_run: bool = Option(
+        False,
+        "--dry-run",
+        help="Show what init would do without writing `.secureli/`, `.secureli.yaml`, hooks, or init logs",
+    ),
 ):
     """
     Detect languages and initialize pre-commit hooks and linters for the project
     """
+    # Typer supplies real booleans via CLI; direct `init()` calls in tests otherwise
+    # receive placeholder Option markers — coerce so `not dry_run` behaves correctly.
+    if not isinstance(dry_run, bool):
+        dry_run = False
+
     SecureliConfig.FOLDER_PATH = Path(directory)
 
     init_result = container.initializer_action().initialize_repo(
-        Path(directory), reset, yes, preserve_precommit_config
+        Path(directory), reset, yes, preserve_precommit_config, dry_run=dry_run
     )
-    if init_result.outcome in [
+    if not dry_run and init_result.outcome in [
         VerifyOutcome.UP_TO_DATE,
         VerifyOutcome.UPDATE_SUCCEEDED,
     ]:

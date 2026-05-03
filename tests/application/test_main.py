@@ -135,6 +135,19 @@ def test_that_unsuccessful_init_does_not_run_update(
     mock_container.update_action.return_value.update_hooks.assert_not_called()
 
 
+def test_that_init_passes_dry_run_and_skips_update(mock_container: MagicMock):
+    mock_container.initializer_action.return_value.initialize_repo.return_value = (
+        VerifyResult(outcome=VerifyOutcome.INSTALL_SUCCEEDED)
+    )
+    result = CliRunner().invoke(secureli.main.app, ["init", "--dry-run", "-y"])
+    assert result.exit_code == 0
+    kwargs = (
+        mock_container.initializer_action.return_value.initialize_repo.call_args.kwargs
+    )
+    assert kwargs["dry_run"] is True
+    mock_container.update_action.return_value.update_hooks.assert_not_called()
+
+
 def test_that_scan_implements_file_arg(mock_container: MagicMock):
     result = CliRunner().invoke(secureli.main.app, ["scan", "--file", "test.py"])
     assert result.exit_code == 0

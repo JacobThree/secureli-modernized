@@ -38,6 +38,7 @@ class LanguageSupportService:
         language_config_result: language.BuildConfigResult,
         overwrite_pre_commit: bool,
         preserve_precommit_config: bool = False,
+        dry_run: bool = False,
     ) -> language.LanguageMetadata:
         """
         Applies Secure Build support for the provided languages
@@ -45,6 +46,7 @@ class LanguageSupportService:
         :param language_config_result: resulting config from language hook detection
         :param overwrite_pre_commit: flag to determine if config should overwrite or append to config file
         :param preserve_precommit_config: If true, preserve the existing pre-commit configuration
+        :param dry_run: If True, skip YAML writes, pre-commit file updates, and .gitignore edits
         :raises LanguageNotSupportedError if support for the language is not provided
         :return: Metadata including version of the language configuration that was just installed
         as well as a secret-detection hook ID, if present.
@@ -56,22 +58,26 @@ class LanguageSupportService:
             )
         )
 
-        linter_config_write_result = self._write_pre_commit_configs(
-            language_config_result.linter_configs
-        )
+        if dry_run:
+            linter_config_write_result = language.LinterConfigWriteResult(
+                successful_languages=[], error_messages=[]
+            )
+        else:
+            linter_config_write_result = self._write_pre_commit_configs(
+                language_config_result.linter_configs
+            )
 
-        if not preserve_precommit_config:
-            pre_commit_file_mode = "w" if overwrite_pre_commit else "a"
-            with open(path_to_pre_commit_file, pre_commit_file_mode) as f:
-                data = (
-                    language_config_result.config_data
-                    if overwrite_pre_commit
-                    else language_config_result.config_data["repos"]
-                )
-                f.write(yaml.dump(data))
+            if not preserve_precommit_config:
+                pre_commit_file_mode = "w" if overwrite_pre_commit else "a"
+                with open(path_to_pre_commit_file, pre_commit_file_mode) as f:
+                    data = (
+                        language_config_result.config_data
+                        if overwrite_pre_commit
+                        else language_config_result.config_data["repos"]
+                    )
+                    f.write(yaml.dump(data))
 
-        # Add .secureli/ to the gitignore folder if needed
-        self.git_ignore.ignore_secureli_files()
+            self.git_ignore.ignore_secureli_files()
 
         return language.LanguageMetadata(
             version=language_config_result.version,

@@ -22,6 +22,7 @@ class InitializerAction(Action):
         reset: bool,
         always_yes: bool,
         preserve_precommit_config: bool = False,
+        dry_run: bool = False,
     ) -> VerifyResult:
         """
         Initializes seCureLI for the specified folder path
@@ -29,6 +30,7 @@ class InitializerAction(Action):
         :param reset: If true, disregard existing configuration and start fresh
         :param always_yes: Assume "Yes" to all prompts
         :param preserve_precommit_config: If true, preserve the existing pre-commit configuration
+        :param dry_run: If true, plan init without writing `.secureli/`, `.secureli.yaml`, hooks, or init logs
         """
         verify_result = self.verify_install(
             folder_path,
@@ -37,10 +39,12 @@ class InitializerAction(Action):
             files=None,
             action_source=ActionSource.INITIALIZER,
             preserve_precommit_config=preserve_precommit_config,
+            dry_run=dry_run,
         )
-        if verify_result.outcome in ScanAction.halting_outcomes:
-            self.action_deps.logging.failure(LogAction.init, verify_result.outcome)
-        else:
-            self.action_deps.logging.success(LogAction.init)
+        if not dry_run:
+            if verify_result.outcome in ScanAction.halting_outcomes:
+                self.action_deps.logging.failure(LogAction.init, verify_result.outcome)
+            else:
+                self.action_deps.logging.success(LogAction.init)
 
         return verify_result

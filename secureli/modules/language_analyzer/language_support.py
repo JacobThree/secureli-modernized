@@ -69,6 +69,7 @@ class LanguageSupportService:
 
             if not preserve_precommit_config:
                 pre_commit_file_mode = "w" if overwrite_pre_commit else "a"
+                path_to_pre_commit_file.parent.mkdir(parents=True, exist_ok=True)
                 with open(path_to_pre_commit_file, pre_commit_file_mode) as f:
                     data = (
                         language_config_result.config_data

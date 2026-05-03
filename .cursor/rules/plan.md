@@ -310,6 +310,113 @@ dependency-injector + python range (pyproject)
 
 ---
 
+## Phase 5: Recommended follow-ons (high leverage)
+
+These tasks extend reliability and consumer contracts beyond the MVP; sequence independently unless noted.
+
+### Task 10: Clean-clone CI job + `poe e2e`
+
+**Description:** Add a workflow job (or scheduled workflow) that runs **`poe test`** / **`poe e2e`** from a **clean checkout** without relying on workspace-local `.secureli` drift from **`poe test`**’s self-`init`. Mitigates masked regressions noted in risks.
+
+**Acceptance criteria:**
+
+- [ ] CI runs **`poe e2e`** (and optionally **`poe test`**) on a fresh clone context (e.g. ephemeral working directory / job isolation).
+- [ ] Failure surfaces clearly when init/scan e2e breaks independent of contributor laptops.
+
+**Verification:**
+
+- [ ] Green workflow on **`main`** (or equivalent) after merge.
+- [ ] Contributor doc blurb when local vs CI divergence is expected.
+
+**Dependencies:** Checkpoint MVP complete; builds on Task 3 CI patterns  
+
+**Files likely touched:**
+
+- `.github/workflows/*.yml`
+- `CONTRIBUTING.md` or `README.md` (short note, optional)
+
+**Estimated scope:** Small–Medium
+
+---
+
+### Task 11: `pydantic-settings` — env / YAML contract tests
+
+**Description:** Dedicated tests for **`Settings`** / **`secureli_yaml_settings`**: env vars, optional secrets source, and `.secureli.yaml` merge order match v1 parity and documented behavior (no dotenv unless explicitly reintroduced).
+
+**Acceptance criteria:**
+
+- [ ] Contract tests cover representative env + yaml combinations (init-time vs file loads as designed).
+- [ ] Regressions caught when `BaseSettings` sources or field renames change.
+
+**Verification:**
+
+- [ ] `pytest` module (e.g. `tests/application/` or `tests/settings/`) with focused cases; no network.
+
+**Dependencies:** Task 2  
+
+**Files likely touched:**
+
+- `tests/application/test_settings.py` (extend) or new `tests/**/test_settings_contracts.py`
+- `secureli/settings.py` (only if tests expose real bugs)
+
+**Estimated scope:** Small
+
+---
+
+### Task 12: JSON Schema + `schema_version` policy for `scan --format json`
+
+**Description:** Publish a **JSON Schema** (or documented OpenAPI-style fragment) for the scan JSON payload; define **version bump rules** for `schema_version` (when fields change, when to increment). Ship schema in-repo (`schemas/` or docs) and reference from README.
+
+**Acceptance criteria:**
+
+- [ ] Artifact checked in or generated in build; consumers can validate payloads.
+- [ ] Documented policy: breaking vs additive changes vs `schema_version`.
+
+**Verification:**
+
+- [ ] Example `jsonschema` or manual validation test against golden fixture.
+- [ ] README links to schema + policy.
+
+**Dependencies:** Tasks 4–5  
+
+**Files likely touched:**
+
+- `schemas/` or `docs/` (new)
+- `secureli/modules/shared/scan_output/json_payload.py` (constants / docstrings only if needed)
+- `README.md`
+
+**Estimated scope:** Small–Medium
+
+---
+
+### Task 13: SARIF `ruleId` policy + GitHub Advanced Security uplift
+
+**Description:** Choose and implement a stable **`ruleId`** strategy (raw **`ScanFailure.id`** vs prefixed by source e.g. **`hooks:`/`custom:`**); extend SARIF payload toward a **target consumer** (document which: e.g. GH Code Scanning ingestion, enterprise viewer). Iterate **locations**, fingerprints, or taxonomies only as required by that consumer—keep minimal path until the target is fixed.
+
+**Acceptance criteria:**
+
+- [ ] Written decision in README or ADR; SARIF builder matches it.
+- [ ] Smoke validation against chosen consumer or documented manual upload steps.
+- [ ] Tests updated for `ruleId`/result shape.
+
+**Verification:**
+
+- [ ] Golden / integration test for representative failure set.
+- [ ] Optional CI snippet for SARIF upload (if GHAS is the target).
+
+**Dependencies:** Task 6; aligns with spec open question on `ruleId`  
+
+**Files likely touched:**
+
+- `secureli/modules/shared/scan_output/sarif_payload.py`
+- `tests/modules/shared/scan_output/test_sarif_payload.py`
+- `README.md`
+- `.github/workflows/*.yml` (optional SARIF upload job)
+
+**Estimated scope:** Medium (larger if GHAS parity is deep)
+
+---
+
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
@@ -353,4 +460,8 @@ dependency-injector + python range (pyproject)
 - [ ] **Task 7:** `init --dry-run`  
 - [ ] **Task 8:** `doctor`  
 - [ ] **Task 9:** README / CI snippet  
-- [ ] **Checkpoint: MVP complete**
+- [ ] **Checkpoint: MVP complete**  
+- [ ] **Task 10:** Clean-clone CI + `poe e2e`  
+- [ ] **Task 11:** `pydantic-settings` env/yaml contract tests  
+- [ ] **Task 12:** JSON Schema + `schema_version` policy (`scan --format json`)  
+- [ ] **Task 13:** SARIF `ruleId` + GHAS (or chosen consumer) uplift

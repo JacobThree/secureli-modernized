@@ -154,7 +154,8 @@ def scan(
         help=(
             "How to write scan results to stdout: "
             "`text` (default) echoes hook output plus a summary line on success; "
-            "`json` prints one JSON object (schema_version + ScanResult)."
+            "`json` prints one JSON object (schema_version + ScanResult); "
+            "`sarif` prints one SARIF 2.1.0 log (see README for consumer limitations)."
         ),
         case_sensitive=False,
     ),

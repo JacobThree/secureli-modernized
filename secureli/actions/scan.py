@@ -16,7 +16,7 @@ from secureli.modules.shared.models.publish_results import PublishResultsOption
 from secureli.modules.shared.models.result import Result
 from secureli.modules.core.core_services.hook_scanner import HooksScannerService
 from secureli.modules.shared.models.scan import ScanMode, ScanOutputFormat
-from secureli.modules.shared.scan_output import build_scan_payload
+from secureli.modules.shared.scan_output import build_scan_payload, build_sarif_payload
 from secureli.settings import Settings
 from secureli.modules.shared import utilities
 
@@ -169,6 +169,10 @@ class ScanAction(action.Action):
         if output_format == ScanOutputFormat.JSON:
             self.action_deps.echo.print(
                 json.dumps(build_scan_payload(scan_result), ensure_ascii=False),
+            )
+        elif output_format == ScanOutputFormat.SARIF:
+            self.action_deps.echo.print(
+                json.dumps(build_sarif_payload(scan_result), ensure_ascii=False),
             )
         elif scan_result.successful:
             self.action_deps.echo.print(

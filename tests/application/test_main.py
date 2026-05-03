@@ -194,6 +194,20 @@ def test_that_scan_format_option_is_case_insensitive(mock_container: MagicMock):
     )
 
 
+def test_that_scan_passes_sarif_output_format(mock_container: MagicMock):
+    result = CliRunner().invoke(secureli.main.app, ["scan", "--format", "sarif"])
+    assert result.exit_code == 0
+    mock_container.scan_action.return_value.scan_repo.assert_called_once_with(
+        folder_path=Path("."),
+        scan_mode=ScanMode.STAGED_ONLY,
+        always_yes=False,
+        publish_results_condition=PublishResultsOption.NEVER,
+        specific_test=None,
+        files=None,
+        output_format=ScanOutputFormat.SARIF,
+    )
+
+
 @pytest.fixture()
 def mock_secureli_yaml_open_fn(mocker: MockerFixture) -> MagicMock:
     mock_open = mocker.mock_open(

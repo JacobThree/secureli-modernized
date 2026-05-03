@@ -18,6 +18,7 @@ class ScanOutputFormat(str, Enum):
 
     TEXT = "text"
     JSON = "json"
+    SARIF = "sarif"
 
 
 class ScanFailure(pydantic.BaseModel):

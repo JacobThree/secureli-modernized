@@ -28,6 +28,7 @@ https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one -
   - [Init](#init)
     - [Preserving Pre-Commit Config](#preserving-pre-commit-config)
   - [Scan](#scan)
+    - [Machine-readable output (`--format`)](#machine-readable-output---format)
     - [Scanned Files](#scanned-files)
     - [PII Scan](#pii-scan)
   - [Custom Regex Scan](#custom-regex-scan)
@@ -130,6 +131,26 @@ To manually trigger a scan, run:
 ```
 
 This will run through all hooks and custom scans, unless a `--specific-test` option is used. The default is to scan staged files only. To scan all files instead, use the `--mode all-files` option.
+
+#### Machine-readable output (`--format`)
+
+By default (`--format text`, or omitted), `secureli scan` prints human-readable hook output. For automation and CI you can emit one document to stdout:
+
+| Value | Meaning |
+|-------|---------|
+| `json` | One JSON object: `schema_version` plus merged `ScanResult` fields (`successful`, `output`, `failures` with hook metadata). |
+| `sarif` | One **[SARIF 2.1.0](https://docs.oasis-open.org/sarif/sarif/v2.1.0/sarif-v2.1.0.html)** log (`version`, `$schema`, `runs[]` with `tool.driver.rules` and `results`). Each result uses **`ruleId` = `ScanFailure.id`** (the pre-commit hook id or custom-scan id). The hook repository URL and `exitCode` appear in `message.text` and in `partialFingerprints` as `secureli/repo` and `secureli/exitCode`. |
+
+Examples:
+
+```bash
+secureli scan --format json
+secureli scan --format sarif
+```
+
+**Limitations (SARIF):** This output is intentionally minimal versus full ingestion expectations for **[GitHub Advanced Security](https://docs.github.com/en/code-security)** and other SARIF viewers. There are no snippets, threaded flow locations, stable fingerprints, remediation blocks, taxonomy references, or real line/column spans from hooks (locations default to line 1, column 1). A consumer may reject or downgrade the log depending on required fields; tighten the mapping after you choose a specific upload path.
+
+Failed scans still exit with a non-zero status (same exit code as plain text mode).
 
 #### Scanned Files
 

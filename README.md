@@ -3,32 +3,57 @@
 <h1 align="center">seCureLI (modernized fork)</h1>
 <strong>The Builder's Security CLI</strong>
 
+> **Repository:** you are reading **[JacobThree/secureli-modernized](https://github.com/JacobThree/secureli-modernized)** — an independent fork. **Canonical upstream:** [slalombuild/seCureLI](https://github.com/slalombuild/secureli) (Homebrew / PyPI releases, Slalom-maintained docs). Original copyright and **Apache 2.0** terms for the upstream codebase still apply here.
+
 ## About this fork
 
-This repository is an **independent fork** of [slalombuild/seCureLI](https://github.com/slalombuild/secureli). The original project remains the canonical open‑source upstream; use it if you want Slalom-maintained Homebrew formulae or PyPI packages. **This fork** is developed separately and is wired for **installation only by building from source** (see below). Upstream notices, copyright, and Apache 2.0 licensing for the originating work still apply alongside this fork.
+This fork is developed separately from Slalom’s release cadence and contributor workflow. **Installation for this repository is [from source only](#installing-from-source)** (git + Poetry); packaged installers are documented for **upstream**, not here.
 
 ### Why this fork
 
 I forked seCureLI to keep iterating on tooling and integrations on my own schedule—without tying releases or contributor policy to upstream. Practical goals included tightening how repositories get scaffolded for JavaScript and TypeScript (including ESLint config material under `.secureli/`), updating CI/pre-commit ergonomics around that flow, and shipping a codebase I can clone, build with Poetry, and run without relying on third-party installers for this fork.
 
-### What’s new in this fork
+### New and changed in this fork
 
-Compared to consuming upstream packages as published, notable differences here include:
+Everything in this subsection is **specific to this repository** relative to the historic upstream README and typical “install from PyPI/Homebrew” story. For line-by-line code history, use the GitHub [compare view](https://github.com/slalombuild/secureli/compare/main...JacobThree:secureli-modernized:main) (`upstream/main` → this fork’s `main`).
 
-- **Explicit ESLint config files for JS/TS** — Language support writes `javascript.eslintrc.yaml` and `typescript.eslintrc.yaml` under `.secureli/` when corresponding linters apply, aligning with pre-commit ESLint hooks that reference those paths.
-- **Distribution model** — There is intentionally **no documented Homebrew or PyPI install path for this repository**; the supported path is a git checkout plus Poetry (below).
-- **Contributing docs** — The upstream [`CONTRIBUTING.md`](https://github.com/slalombuild/secureli/blob/main/CONTRIBUTING.md) does not belong to this fork and is not mirrored here.
+#### At a glance (labels)
 
-For changes at the patch level over time, see the [compare view](https://github.com/slalombuild/secureli/compare/main...JacobThree:secureli-modernized:main) against upstream `main`.
+| Label | Meaning |
+|-------|---------|
+| **`NEW (CLI)`** | New or substantially extended commands/flags in **this fork’s** CLI. Detailed under [Usage](#usage); each item is also marked inline with **This fork**. |
+| **`NEW (scaffolding)`** | Files or layouts written into a target repo when using this fork’s language support. |
+| **`DOCS (this fork)`** | README / policy only—not necessarily a code change. |
+
+#### `NEW (CLI)` — commands and scan output
+
+| Item | What it does |
+|------|----------------|
+| **`secureli init --dry-run`** | Preview init without writing `.secureli/`, `.secureli.yaml`, git hooks, or init logs. |
+| **`secureli doctor`** | Read-only checks (Python version vs package metadata, `pre-commit` on `PATH`, hook YAML present/parsable). |
+| **`secureli scan --format json`** | Machine-readable JSON scan result on stdout. |
+| **`secureli scan --format sarif`** | SARIF 2.1.0 log on stdout (minimal mapping; see usage notes). |
+
+#### `NEW (scaffolding)` — JavaScript / TypeScript ESLint
+
+When JS/TS linters apply, language support writes **`javascript.eslintrc.yaml`** and **`typescript.eslintrc.yaml`** under **`.secureli/`**, matching pre-commit ESLint hooks that reference those paths.
+
+#### `DOCS (this fork)` — how this README differs
+
+- **No Homebrew or PyPI install** instructions for *this* repo—only **[Installing from source](#installing-from-source)**.
+- **No `CONTRIBUTING.md` here** — upstream’s [CONTRIBUTING.md](https://github.com/slalombuild/secureli/blob/main/CONTRIBUTING.md) is theirs; this fork does not ship a copy.
+- **Usage subsections** below that start with **This fork** repeat the same features in narrative form next to the rest of the CLI reference.
 
 ## Installing from source
+
+> **This fork — `DOCS (this fork)`** — There is **no** documented Homebrew or PyPI path for *this* repository; use upstream if you want those installers.
 
 This is the **only supported installation method** for this fork.
 
 Prerequisites:
 
 - Git
-- Python 3.9 through 3.11 (see [`pyproject.toml`](pyproject.toml) for the current Poetry constraint)
+- Python 3.9 through 3.12 (see [`pyproject.toml`](pyproject.toml) for the current Poetry constraint)
 - [Poetry](https://python-poetry.org/docs/)
 
 Steps:
@@ -50,6 +75,10 @@ poetry run secureli --help
 <!-- Table of contents generated by VSCode plugin Markdown All in One
 https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one -->
 
+- [About this fork](#about-this-fork)
+  - [Why this fork](#why-this-fork)
+  - [New and changed in this fork](#new-and-changed-in-this-fork)
+- [Installing from source](#installing-from-source)
 - [Upstream overview](#upstream-overview)
 - [Usage](#usage)
   - [Help](#help)
@@ -83,6 +112,8 @@ https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one -
 - [License](#license)
 
 ---
+
+> **Reading guide:** [Upstream overview](#upstream-overview) and most of [Usage](#usage) describe seCureLI behavior in general. Any **Usage** subsection whose first line is a **This fork** callout documents a feature called out in [New and changed in this fork](#new-and-changed-in-this-fork) above.
 
 ## Upstream overview
 
@@ -144,6 +175,8 @@ Running `secureli init` will allow seCureLI to detect the languages in your repo
 
 #### Init dry-run (`--dry-run`)
 
+> **This fork — `NEW (CLI)`** — Preview `init` without mutating the repo.
+
 To preview what `init` would do **without creating or editing** `.secureli/`, `.secureli.yaml`, git hooks, or init log files:
 
 ```bash
@@ -157,6 +190,8 @@ You still get language detection and a short checklist printed to stdout. No aut
 If you have an existing pre-commit config file you want to preserve when running `secureli init`, you can use the `--preserve-precommit-config` flag. This is useful for example when checking out a repo with an existing pre-commit config file.
 
 ### Doctor
+
+> **This fork — `NEW (CLI)`** — Read-only environment and config checks.
 
 `doctor` performs **read-only** checks useful before or after onboarding a repo:
 
@@ -183,6 +218,8 @@ This will run through all hooks and custom scans, unless a `--specific-test` opt
 
 #### Machine-readable output (`--format`)
 
+> **This fork — `NEW (CLI)`** — `json` and `sarif` scan formats for automation.
+
 By default (`--format text`, or omitted), `secureli scan` prints human-readable hook output. For automation and CI you can emit one document to stdout:
 
 | Value | Meaning |
@@ -202,6 +239,8 @@ secureli scan --format sarif
 Failed scans still exit with a non-zero status (same exit code as plain text mode).
 
 #### GitHub Actions machine-readable scan
+
+> **This fork — `NEW (CLI)` (example)** — CI pattern for `--format json`. The snippet uses **`pip install secureli`** as a short stand-in for “install the `secureli` package”; **for this fork’s supported path**, install from a checkout with Poetry instead (see [Installing from source](#installing-from-source)).
 
 Minimal workflow to run **`secureli`** in CI and persist **JSON** results (fails the job if hooks report issues—the same behavior as **`text`** mode):
 
@@ -265,6 +304,8 @@ secureli update --new-pattern <your-custom-regex>
 
 ### Supported Languages
 
+> **This fork — `NEW (scaffolding)`** — For **JavaScript** and **TypeScript**, this checkout also emits **`javascript.eslintrc.yaml`** / **`typescript.eslintrc.yaml`** under **`.secureli/`** when those linters apply (see [New and changed in this fork](#new-and-changed-in-this-fork)).
+
 seCureLI has Slalom-maintained templates for security management of the following languages.
 
 - Java
@@ -280,6 +321,8 @@ seCureLI has Slalom-maintained templates for security management of the followin
 ## Upgrade
 
 ### Updating from git
+
+> **This fork — `DOCS (this fork)`** — Replaces upstream “upgrade via Homebrew/pip” for this repo.
 
 Pull the latest changes for this fork and reinstall dependencies:
 
